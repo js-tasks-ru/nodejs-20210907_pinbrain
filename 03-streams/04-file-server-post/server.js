@@ -3,6 +3,7 @@ const http = require('http');
 const path = require('path');
 const LimitSizeStream = require('./LimitSizeStream');
 const fs = require('fs');
+const { chunk } = require('lodash');
 
 const server = new http.Server();
 
@@ -24,6 +25,15 @@ server.on('request', (req, res) => {
             res.statusCode = 201;
             res.end('Data was saved');
           });
+
+          outStream.on('error', () => {
+            outStream.on('close', () => {
+              fs.unlink(filepath, (err) => {
+                if (err) console.error(err);
+                console.log('file ' + filepath + ' was deleted....');
+              });        
+            })
+          })
   
           limitSizeStream.on('error', (err) => {  
             if (err.code === 'LIMIT_EXCEEDED') {
@@ -33,28 +43,15 @@ server.on('request', (req, res) => {
               res.statusCode = 500;
               res.end('Server error');
             }
-            outStream.destroy();
-            outStream.on('close', () => {
-              fs.unlink(filepath, (err) => {
-                if (err) console.error(err);
-                console.log('file ' + filepath + ' was deleted....');
-              });        
-            })
+            outStream.destroy(err);
           });
 
-          outStream.on('error', (err) => {
-            console.error(err);
-          });
+          req.on('data', (chunk) => {});
 
           req.on('aborted', () => {
-            outStream.destroy();
-            outStream.on('close', () => {
-              fs.unlink(filepath, (err) => {
-                if (err) console.error(err);
-                console.log('file ' + filepath + ' was deleted....');
-              });        
-            })
+            outStream.destroy(new Error());
           });
+
         }else{
           res.statusCode = 409;
           res.end('File already exists')
