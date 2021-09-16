@@ -3,7 +3,6 @@ const http = require('http');
 const path = require('path');
 const LimitSizeStream = require('./LimitSizeStream');
 const fs = require('fs');
-const { chunk } = require('lodash');
 
 const server = new http.Server();
 
