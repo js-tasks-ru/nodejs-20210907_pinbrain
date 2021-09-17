@@ -14,7 +14,7 @@ server.on('request', (req, res) => {
       const stream = fs.createReadStream(filepath);
       stream.pipe(res);
       stream.on('error', (error) => {
-        if(error.code = 404){
+        if(error.code === 'ENOENT'){
           res.statusCode = 404;
           res.end('File not found');
         }else{
@@ -22,7 +22,7 @@ server.on('request', (req, res) => {
           res.end('Something go wrong...');
         }
       });
-      stream.on('aborted', () => {
+      req.on('aborted', () => {
         stream.destroy();
       });
     }else{

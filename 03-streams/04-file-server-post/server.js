@@ -24,15 +24,6 @@ server.on('request', (req, res) => {
             res.statusCode = 201;
             res.end('Data was saved');
           });
-
-          outStream.on('error', () => {
-            outStream.on('close', () => {
-              fs.unlink(filepath, (err) => {
-                if (err) console.error(err);
-                console.log('file ' + filepath + ' was deleted....');
-              });        
-            })
-          })
   
           limitSizeStream.on('error', (err) => {  
             if (err.code === 'LIMIT_EXCEEDED') {
@@ -42,13 +33,25 @@ server.on('request', (req, res) => {
               res.statusCode = 500;
               res.end('Server error');
             }
-            outStream.destroy(err);
+            outStream.destroy();
+            outStream.on('close', () => {
+              fs.unlink(filepath, (err) => {
+                if (err) console.error(err);
+                console.log('file ' + filepath + ' was deleted....');
+              });        
+            })
           });
 
           req.on('data', (chunk) => {});
 
           req.on('aborted', () => {
-            outStream.destroy(new Error());
+            outStream.destroy();
+            outStream.on('close', () => {
+              fs.unlink(filepath, (err) => {
+                if (err) console.error(err);
+                console.log('file ' + filepath + ' was deleted....');
+              });        
+            })
           });
 
         }else{
