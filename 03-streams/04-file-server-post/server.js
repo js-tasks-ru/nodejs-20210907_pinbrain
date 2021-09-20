@@ -11,58 +11,57 @@ server.on('request', (req, res) => {
   const pathname = url.pathname.slice(1);
 
   function writeFile(){
-    if(pathname.length > 0 && pathname.indexOf('/') === -1){
-      const filepath = path.join(__dirname, 'files', pathname);
-      fs.stat(filepath, (err, stats) => {
-        if(err || !stats.isFile()) {
-          const limitSizeStream = new LimitSizeStream({limit: 1000000});
-          const outStream = fs.createWriteStream(filepath);
-          req.pipe(limitSizeStream)
-            .pipe(outStream);
-  
-          outStream.on('finish', () => {
-            res.statusCode = 201;
-            res.end('Data was saved');
-          });
-  
-          limitSizeStream.on('error', (err) => {  
-            if (err.code === 'LIMIT_EXCEEDED') {
-              res.statusCode = 413;
-              res.end('File is too big!');
-            }else{
-              res.statusCode = 500;
-              res.end('Server error');
-            }
-            outStream.destroy();
-            outStream.on('close', () => {
-              fs.unlink(filepath, (err) => {
-                if (err) console.error(err);
-                console.log('file ' + filepath + ' was deleted....');
-              });        
-            })
-          });
 
-          req.on('data', (chunk) => {});
-
-          req.on('aborted', () => {
-            outStream.destroy();
-            outStream.on('close', () => {
-              fs.unlink(filepath, (err) => {
-                if (err) console.error(err);
-                console.log('file ' + filepath + ' was deleted....');
-              });        
-            })
-          });
-
-        }else{
-          res.statusCode = 409;
-          res.end('File already exists')
-        }
-      });      
-    }else{
+    if(pathname.includes('/') || pathname.includes('..')) {
       res.statusCode = 400;
-      res.end('Bad request url');
+      res.end('Nested paths are not allowed');
+      return;
     }
+
+    const filepath = path.join(__dirname, 'files', pathname);
+    const limitSizeStream = new LimitSizeStream({limit: 1000000});
+    const outStream = fs.createWriteStream(filepath, {
+        flags: 'wx'
+    });
+
+    req.pipe(limitSizeStream)
+      .pipe(outStream);
+
+    outStream.on('finish', () => {
+      res.statusCode = 201;
+      res.end('Data was saved');
+    });
+
+    outStream.on('error', (err) => {
+      if(err.code === 'EEXIST') {
+        res.statusCode = 409;
+        res.end('File already exists'); 
+        return;
+      }
+      res.statusCode = 500;
+      res.end('Server error');
+    });
+
+    limitSizeStream.on('error', (err) => {  
+      if (err.code === 'LIMIT_EXCEEDED') {
+        res.statusCode = 413;
+        res.end('File is too big!');
+      }else{
+        res.statusCode = 500;
+        res.end('Server error');
+      }
+      
+      outStream.destroy();
+      fs.unlink(filepath, (err) => {});        
+    });
+
+    req.on('data', (chunk) => {});
+
+    req.on('aborted', () => {
+      limitSizeStream.destroy();
+      outStream.destroy();
+      fs.unlink(filepath, (err) => {});       
+    });
   }
 
   switch (req.method) {

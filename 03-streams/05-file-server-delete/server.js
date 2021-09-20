@@ -10,28 +10,29 @@ server.on('request', (req, res) => {
   const pathname = url.pathname.slice(1);
 
   function deleteFile() {
-    if(pathname.length > 0 && pathname.indexOf('/') === -1){
-      const filepath = path.join(__dirname, 'files', pathname);
-      fs.stat(filepath, (err, stats) => {
-        if(err || !stats.isFile()) {
+
+    if(pathname.includes('/') || pathname.includes('..')) {
+      res.statusCode = 400;
+      res.end('Nested paths are not allowed');
+      return;
+    }
+    
+    const filepath = path.join(__dirname, 'files', pathname);
+    
+    fs.unlink(filepath, (err) => {
+      if(!err){
+        res.statusCode = 200;
+        res.end('File was deleted')
+      } else {
+        if(err.code === 'ENOENT'){
           res.statusCode = 404;
           res.end('file not found');
-        }else{
-          fs.unlink(filepath, (err) => {
-              if(err){
-                  res.statusCode = 500;
-                  res.end('Server error')                        
-              }else{
-                  res.statusCode = 200;
-                  res.end('File was deleted')
-              }
-          });
+        } else {
+          res.statusCode = 500;
+          res.end('server error');
         }
-      });
-    }else{
-      res.statusCode = 400;
-      res.end('Bad request url');
-    }
+      }
+    });
   }
 
   switch (req.method) {
