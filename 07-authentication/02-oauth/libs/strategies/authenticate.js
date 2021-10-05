@@ -1,10 +1,9 @@
 const User = require('../../models/User');
-const Users = require('../../models/User');
 
 module.exports = async function authenticate(strategy, email, displayName, done) {
   console.log(email, displayName);
   if(!email) return done(null, false, 'Не указан email');
-  let user = await Users.findOne({email: email});
+  let user = await User.findOne({email: email});
   if(!user) {
     try{
       user = new User({
