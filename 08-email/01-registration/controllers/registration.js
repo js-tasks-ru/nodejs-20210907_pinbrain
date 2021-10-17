@@ -6,7 +6,7 @@ module.exports.register = async (ctx, next) => {
   const email = ctx.request.body.email;
   const displayName = ctx.request.body.displayName;
   const token = uuid();
-  const user = await new User({
+  const user = new User({
     email: email,
     displayName: displayName
       ? displayName
