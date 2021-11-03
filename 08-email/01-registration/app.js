@@ -10,9 +10,11 @@ const {oauth, oauthCallback} = require('./controllers/oauth');
 const {me} = require('./controllers/me');
 const {register, confirm} = require('./controllers/registration');
 const Session = require('./models/Session');
+const path = require('path');
 
 const app = new Koa();
 
+app.use(require('koa-static')(path.join(__dirname, 'public')));
 app.use(require('koa-bodyparser')());
 
 app.use(async (ctx, next) => {
@@ -42,6 +44,8 @@ app.use((ctx, next) => {
 });
 
 const router = new Router({prefix: '/api'});
+
+const confirmRouter = new Router();
 
 router.use(async (ctx, next) => {
   const header = ctx.request.get('Authorization');
@@ -74,7 +78,9 @@ router.get('/me', mustBeAuthenticated, me);
 
 router.post('/register', handleMongooseValidationError, register);
 router.post('/confirm', confirm);
+confirmRouter.get('/confirm/:token', confirm); // for browser test
 
 app.use(router.routes());
+app.use(confirmRouter.routes());
 
 module.exports = app;
